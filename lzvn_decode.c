@@ -30,10 +30,19 @@
  * Thanks to Andy Vandijck and 'MinusZwei' for their hard work!
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#include <stdlib.h>
+#define OSSwapInt64 _byteswap_uint64
+#elif defined __APPLE__
 #include <libkern/OSByteOrder.h>
+#else
+#include <byteswap.h>
+#define OSSwapInt64 bswap_64
+#endif
 
 #define DEBUG_STATE_ENABLED		0
 
@@ -62,18 +71,18 @@
 
 size_t lzvn_decode(void * decompressedData, size_t decompressedSize, void * compressedData, size_t compressedSize)
 {
-	const uint64_t decompBuffer = (const uint64_t)decompressedData;
+	const uintptr_t decompBuffer = (const uintptr_t)decompressedData;
 
 	size_t	length	= 0;															// xor	%rax,%rax
 
-	uint64_t compBuffer	= (uint64_t)compressedData;
+	uintptr_t compBuffer	= (uintptr_t)compressedData;
 
 	uint64_t compBufferPointer	= 0;												// use p(ointer)?
 	uint64_t caseTableIndex	= 0;
 	uint64_t byteCount		= 0;
 	uint64_t currentLength	= 0;													// xor	%r12,%r12
 	uint64_t negativeOffset	= 0;
-	uint64_t address		= 0;													// ((uint64_t)compBuffer + compBufferPointer)
+	uintptr_t address		= 0;													// ((uint64_t)compBuffer + compBufferPointer)
 
 	uint8_t jmpTo			= CASE_TABLE;											// On the first run!
 
@@ -373,7 +382,7 @@ size_t lzvn_decode(void * decompressedData, size_t decompressedSize, void * comp
 
 					address = (compBuffer + compBufferPointer);						// movzbq (%rdx,%r8,1),%r9
 					caseTableIndex = (*((uint64_t *)address) & 255);
-					memcpy((void *)decompBuffer + length, &caseTableIndex, 1);
+					memcpy((char *)decompBuffer + length, &caseTableIndex, 1);
 					length++;														// add	$0x1,%rax
 					
 					if (currentLength == length)									// cmp	%rax,%r11
@@ -407,7 +416,7 @@ size_t lzvn_decode(void * decompressedData, size_t decompressedSize, void * comp
 					caseTableIndex = (*((uint8_t *)address) & 255);
 
 					compBufferPointer++;											// add	$0x1,%r8
-					memcpy((void *)decompBuffer + length, &caseTableIndex, 1);		// mov	%r9,(%rdi,%rax,1)
+					memcpy((char *)decompBuffer + length, &caseTableIndex, 1);		// mov	%r9,(%rdi,%rax,1)
 					length++;														// add	$0x1,%rax
 					
 					if (length == currentLength)									// cmp	%rax,%r11
@@ -435,7 +444,7 @@ size_t lzvn_decode(void * decompressedData, size_t decompressedSize, void * comp
 					caseTableIndex = *((uint64_t *)address);
 
 					compBufferPointer += 8;											// add	$0x8,%r8
-					memcpy((void *)decompBuffer + length, &caseTableIndex, 8);		// mov	%r9,(%rdi,%rax,1)
+					memcpy((char *)decompBuffer + length, &caseTableIndex, 8);		// mov	%r9,(%rdi,%rax,1)
 					length += 8;													// add	$0x8,%rax
 					byteCount -= 8;													// sub	$0x8,%r10
 					
@@ -457,7 +466,7 @@ size_t lzvn_decode(void * decompressedData, size_t decompressedSize, void * comp
 
 				if (currentLength < decompressedSize)								// cmp	%rsi,%r11 (block_end: jae	Llzvn_l8)
 				{
-					memcpy((void *)decompBuffer + length, &compBufferPointer, 8);	// mov	%r8,(%rdi,%rax,1)
+					memcpy((char *)decompBuffer + length, &compBufferPointer, 8);	// mov	%r8,(%rdi,%rax,1)
 					length += caseTableIndex;										// add	%r9,%rax
 					compBufferPointer = length;										// mov	%rax,%r8
 						
@@ -496,7 +505,7 @@ size_t lzvn_decode(void * decompressedData, size_t decompressedSize, void * comp
 				{
 					_LZVN_DEBUG_DUMP("jmpTable(6)\n");
 
-					memcpy((void *)decompBuffer + length, &compBufferPointer, 1);	// mov	%r8b,(%rdi,%rax,1)
+					memcpy((char *)decompBuffer + length, &compBufferPointer, 1);	// mov	%r8b,(%rdi,%rax,1)
 					length++;														// add	$0x1,%rax
 						
 					if (length == currentLength)									// cmp	%rax,%r11
