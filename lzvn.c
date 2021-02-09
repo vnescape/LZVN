@@ -199,6 +199,11 @@ int main(int argc, const char * argv[])
                     } else {
                         size_t workSpaceSize = lzvn_encode_work_size();
 
+                        if (fileLength > workSpaceSize)
+                        {
+                            workSpaceSize = fileLength;
+                        }
+
                         printf("workSpaceSize: %ld \n", workSpaceSize);
                         uncompressedBuffer = malloc(workSpaceSize);
 
@@ -208,14 +213,28 @@ int main(int argc, const char * argv[])
 
                             return -1;
                         } else {
-                            while ((compsize = lzvn_decode(uncompressedBuffer, workSpaceSize, fileBuffer, fileLength)) > 0)
+                            while (1)
                             {
-                                fwrite(uncompressedBuffer, 1, compsize, fp);
-                                fileBuffer += workSpaceSize;
-                                byteshandled += workSpaceSize;
+                                compsize = lzvn_decode(uncompressedBuffer, workSpaceSize, fileBuffer, fileLength);
+                                if(compsize == 0)
+                                {
+                                    printf("ERROR: Decompression errored out (truncated input?)... exiting\nAborted!\n\n");
+                                    return -1;
+                                }
+                                if(compsize < workSpaceSize)
+                                {
+                                    fwrite(uncompressedBuffer, 1, compsize, fp);
+                                    break;
+                                }
+                                workSpaceSize *= 2;
+                                printf("workSpaceSize: %ld \n", workSpaceSize);
+                                uncompressedBuffer = realloc(uncompressedBuffer, workSpaceSize);
+                                if (uncompressedBuffer == NULL)
+                                {
+                                    printf("ERROR: Failed to allocate uncompressed buffer... exiting\nAborted!\n\n");
+                                    return -1;
+                                }
                             }
-
-                            fileBuffer -= byteshandled;
 
                             if (fileBuffer != NULL)
                             {
