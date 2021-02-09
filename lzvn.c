@@ -216,7 +216,12 @@ int main(int argc, const char * argv[])
                             while (1)
                             {
                                 compsize = lzvn_decode(uncompressedBuffer, workSpaceSize, fileBuffer, fileLength);
-                                if(compsize > 0 && compsize < workSpaceSize)
+                                if(compsize == 0)
+                                {
+                                    printf("ERROR: Decompression errored out (truncated input?)... exiting\nAborted!\n\n");
+                                    return -1;
+                                }
+                                if(compsize < workSpaceSize)
                                 {
                                     fwrite(uncompressedBuffer, 1, compsize, fp);
                                     break;
