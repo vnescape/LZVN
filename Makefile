@@ -14,10 +14,17 @@ RANLIB=ranlib
 INSTALL=install
 CODESIGN=codesign
 ARFLAGS=cru
-CFLAGS=-g0 -arch arm64 -arch x86_64 -Ofast
 
+# Check the operating system
+ifeq ($(shell uname), Darwin)
 ### Change to "" for no signing or "Something: Me..." for signing ###
-SIGNCERT="Apple Development"
+    SIGNCERT="Apple Development"
+    CFLAGS=-g0 -Ofast -arch arm64 -arch x86_64
+else
+    SIGNCERT=""
+    CFLAGS=-g0 -Ofast
+endif
+
 # PKGSIGNCERT="Developer ID Installer: Andy Vandijck (GSF3NR4NQ5)"
 
 all: lzvn
@@ -57,7 +64,6 @@ installer:  libFastCompression.a lzvn
 	if [ $(PKGSIGNCERT) != "" ]; then sudo productsign --sign $(PKGSIGNCERT) lzvncombopkg/lzvn-1.0.pkg lzvncombopkg/lzvn-1.0-apple.pkg && sudo rm -Rf lzvncombopkg/lzvn-1.0.pkg; else mv lzvncombopkg/lzvn-1.0.pkg lzvncombopkg/lzvn-1.0-apple.pkg; fi
 	sudo cp -Rf Resources lzvncombopkg/Resources
 	sudo cp -f Distribution lzvncombopkg/Distribution
-	cd lzvncombopkg &&  sudo rm -Rf .DS_Store */.DS_Store */*/.DS_Store && sudo productbuild --distribution Distribution --resources Resources --package-path $(PWD) ../lzvn-apple.pkg && cd ..
+	cd lzvncombopkg && sudo rm -Rf .DS_Store */.DS_Store */*/.DS_Store && sudo productbuild --distribution Distribution --resources Resources --package-path $(PWD) ../lzvn-apple.pkg && cd ..
 	sudo rm -Rf lzvncombopkg
 	if [ $(PKGSIGNCERT) != "" ]; then sudo productsign --sign $(PKGSIGNCERT) lzvn-apple.pkg lzvn.pkg && sudo rm -Rf lzvn-apple.pkg; else mv lzvn-apple.pkg lzvn.pkg; fi
-
